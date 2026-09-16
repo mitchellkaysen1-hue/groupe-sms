@@ -21,8 +21,8 @@ bot1 = telebot.TeleBot(BOT_TOKEN_1)
 # ২. নতুন বটের তথ্য (গ্রুপ ২)
 # ==========================================
 BOT_TOKEN_2 = '8861443748:AAHSx7yHrRPIyzTq0fazbYwynzP3ON4-UqQ'
-API_URL_2 = 'http://147.135.212.197/crapi/had/viewstats'
-PANEL_TOKEN_2 = 'RVRVSjRSQlp8ioJzZ3JXSHh_jl91VIKHSnZQYnyUa3hSmE-Ch4SS'
+API_URL_2 = 'https://panel.lamix.org/api/v1/messages'
+PANEL_TOKEN_2 = 'M61_HpNtW6tXNgl4k8lgaM7vNnIUUDBq3RQQOvHAnVw'
 
 bot2 = telebot.TeleBot(BOT_TOKEN_2)
 
