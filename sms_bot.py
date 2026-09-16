@@ -5,6 +5,7 @@ import time
 import re
 import os
 import json
+from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ==========================================
@@ -22,8 +23,6 @@ bot1 = telebot.TeleBot(BOT_TOKEN_1)
 # ==========================================
 BOT_TOKEN_2 = '8861443748:AAHSx7yHrRPIyzTq0fazbYwynzP3ON4-UqQ'
 API_URL_2 = 'https://panel.lamix.org/api/v1/messages'
-
-# Corrected Token ('1' er jaygay 'l')
 PANEL_TOKEN_2 = 'M61_HpNtW6tXNgl4k8lgaM7vNnIUUDBq3RQQOvHAnVw'
 
 bot2 = telebot.TeleBot(BOT_TOKEN_2)
@@ -132,31 +131,43 @@ def run_bot_1_loop():
         time.sleep(4)
 
 # ==========================================
-# ৪. নতুন বটের ফরোয়ার্ড লুপ (Thread 2 - Fixed for Lamix API)
+# ৪. নতুন বটের ফরোয়ার্ড লুপ (Dynamic Date System)
 # ==========================================
 def run_bot_2_loop():
     global processed_sms_ids_2
     print("🚀 Bot 2 (New) Forwarder Loop Started...")
     while True:
         try:
-            # Lamix API request with fixed token
-            response = requests.get(f"{API_URL_2}?token={PANEL_TOKEN_2}", timeout=10)
+            # Dynamic today and tomorrow calculation (Auto UTC time adjustment)
+            now = datetime.utcnow()
+            today_str = now.strftime('%Y-%m-%dT00:00:00Z')
+            tomorrow_str = (now + timedelta(days=1)).strftime('%Y-%m-%dT23:59:00Z')
+
+            params = {
+                "token": PANEL_TOKEN_2,
+                "from": today_str,
+                "to": tomorrow_str,
+                "limit": 25
+            }
+            
+            response = requests.get(API_URL_2, params=params, timeout=10)
+            
             if response.status_code == 200:
-                sms_list = response.json()
+                full_data = response.json()
                 
-                # If API returns dict wrapping a list/data
-                if isinstance(sms_list, dict):
-                    sms_list = sms_list.get('data', [])
-                
+                if isinstance(full_data, dict):
+                    sms_list = full_data.get('data', [])
+                elif isinstance(full_data, list):
+                    sms_list = full_data
+                else:
+                    sms_list = []
+
                 if isinstance(sms_list, list):
-                    # Process from oldest to newest
                     for sms in reversed(sms_list):
-                        # Lamix API fields parsing
                         msg_id = str(sms.get('id', ''))
                         num = str(sms.get('number') or sms.get('phone') or sms.get('num') or 'Unknown').strip()
                         sms_time = str(sms.get('created_at') or sms.get('dt') or '')
                         
-                        # Unique identifier using ID or number+time
                         msg_unique_id = msg_id if msg_id else f"{num}_{sms_time}"
                         
                         if msg_unique_id not in processed_sms_ids_2:
@@ -189,8 +200,12 @@ def run_bot_2_loop():
                                 time.sleep(1)
                             except Exception as send_error:
                                 print(f"[Bot 2] Sending Error: {send_error}")
+            else:
+                print(f"[Bot 2] HTTP Error Status: {response.status_code}")
+                
         except Exception as e:
             print(f"[Bot 2] Fetch Error: {e}")
+            
         time.sleep(4)
 
 # ==========================================
@@ -203,11 +218,11 @@ if __name__ == "__main__":
     t1 = threading.Thread(target=run_bot_1_loop, daemon=True)
     t1.start()
     
-    # দ্বিতীয় বটের লুপ মেইন থ্রেডে বা আরেকটি থ্রেডে চালু করা হলো
+    # দ্বিতীয় বটের লুপ ব্যাকগ্রাউন্ড থ্রেডে চালু করা হলো
     t2 = threading.Thread(target=run_bot_2_loop, daemon=True)
     t2.start()
     
-    # থ্রেড দুটি যাতে বন্ধ না হয়ে ব্যাকগ্রাউন্ডে চলতে থাকে
+    # থ্রেড দুটি যাতে ব্যাকগ্রাউন্ডে চলতে থাকে
     try:
         while True:
             time.sleep(1)
