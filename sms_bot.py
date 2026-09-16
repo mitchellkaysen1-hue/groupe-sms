@@ -5,7 +5,6 @@ import time
 import re
 import os
 import json
-from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ==========================================
@@ -131,23 +130,17 @@ def run_bot_1_loop():
         time.sleep(4)
 
 # ==========================================
-# ৪. নতুন বটের ফরোয়ার্ড লুপ (Dynamic Date System)
+# ৪. নতুন বটের ফরোয়ার্ড লুপ (Direct Pure Request)
 # ==========================================
 def run_bot_2_loop():
     global processed_sms_ids_2
     print("🚀 Bot 2 (New) Forwarder Loop Started...")
     while True:
         try:
-            # Dynamic today and tomorrow calculation (Auto UTC time adjustment)
-            now = datetime.utcnow()
-            today_str = now.strftime('%Y-%m-%dT00:00:00Z')
-            tomorrow_str = (now + timedelta(days=1)).strftime('%Y-%m-%dT23:59:00Z')
-
+            # Simple Request without Date Filters to prevent empty response
             params = {
                 "token": PANEL_TOKEN_2,
-                "from": today_str,
-                "to": tomorrow_str,
-                "limit": 25
+                "limit": 20
             }
             
             response = requests.get(API_URL_2, params=params, timeout=10)
@@ -155,6 +148,9 @@ def run_bot_2_loop():
             if response.status_code == 200:
                 full_data = response.json()
                 
+                # Debugging log on console
+                print(f"[Bot 2 Response Check]: Received {len(full_data) if isinstance(full_data, list) else 'Object'}")
+
                 if isinstance(full_data, dict):
                     sms_list = full_data.get('data', [])
                 elif isinstance(full_data, list):
@@ -199,7 +195,7 @@ def run_bot_2_loop():
                                 print(f"[Bot 2] Successfully forwarded OTP for {masked_number}")
                                 time.sleep(1)
                             except Exception as send_error:
-                                print(f"[Bot 2] Sending Error: {send_error}")
+                                print(f"[Bot 2] Sending Error (Telegram): {send_error}")
             else:
                 print(f"[Bot 2] HTTP Error Status: {response.status_code}")
                 
@@ -214,15 +210,12 @@ def run_bot_2_loop():
 if __name__ == "__main__":
     print("🔄 মাল্টি-বট সিস্টেম ব্যাকগ্রাউন্ড থ্রেড সহ চালু হচ্ছে...")
     
-    # প্রথম বটের লুপ ব্যাকগ্রাউন্ড থ্রেডে চালু করা হলো
     t1 = threading.Thread(target=run_bot_1_loop, daemon=True)
     t1.start()
     
-    # দ্বিতীয় বটের লুপ ব্যাকগ্রাউন্ড থ্রেডে চালু করা হলো
     t2 = threading.Thread(target=run_bot_2_loop, daemon=True)
     t2.start()
     
-    # থ্রেড দুটি যাতে ব্যাকগ্রাউন্ডে চলতে থাকে
     try:
         while True:
             time.sleep(1)
