@@ -10,7 +10,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # Lamix Bot Configuration
 # ==========================================
 BOT_TOKEN = '8861443748:AAHSx7yHrRPIyzTq0fazbYwynzP3ON4-UqQ'
-CHAT_ID = '-1003919009698'  # আপনার টেলিগ্রাম গ্রুপ/চ্যানেল আইডি
+CHAT_ID = '-1003919009698'
 
 API_URL = 'https://panel.lamix.org/api/v1/messages'
 PANEL_TOKEN = 'M61_HpNtW6tXNgl4k8lgaM7vNnIUUDBq3RQQOvHAnVw'
@@ -65,14 +65,12 @@ def format_number(num):
 # ==========================================
 def start_lamix_forwarder():
     global processed_sms_ids
-    print("🚀 Starting Only Lamix Bot Forwarder...")
+    print("🚀 Starting Lamix Bot Forwarder...")
     
     while True:
         try:
-            # Fetching last 15 messages without complex filters
             params = {
-                "token": PANEL_TOKEN,
-                "limit": 15
+                "token": PANEL_TOKEN
             }
             
             response = requests.get(API_URL, params=params, timeout=10)
@@ -80,31 +78,23 @@ def start_lamix_forwarder():
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check JSON Response structure
-                if isinstance(data, dict):
-                    sms_list = data.get('data', [])
-                elif isinstance(data, list):
-                    sms_list = data
-                else:
-                    sms_list = []
-
-                print(f"📡 API Checked | Total Messages Found: {len(sms_list)}")
+                # Reading the 'records' array based on your Raw Response
+                sms_list = data.get('records', [])
 
                 if isinstance(sms_list, list) and len(sms_list) > 0:
                     for sms in reversed(sms_list):
-                        # Extract Message Details
-                        msg_id = str(sms.get('id', ''))
-                        num = str(sms.get('number') or sms.get('phone') or sms.get('num') or 'Unknown').strip()
-                        sms_time = str(sms.get('created_at') or sms.get('dt') or '')
+                        num = str(sms.get('number', 'Unknown')).strip()
+                        sms_time = str(sms.get('time', ''))
                         
-                        msg_unique_id = msg_id if msg_id else f"{num}_{sms_time}"
+                        # Unique Identifier
+                        msg_unique_id = f"{num}_{sms_time}"
                         
                         if msg_unique_id not in processed_sms_ids:
-                            msg_content = sms.get('message', 'No message')
+                            # Correct Keys based on Raw Response: 'content' & 'cli'
+                            msg_content = sms.get('content', 'No message')
                             otp = extract_otp(msg_content)
                             
-                            service_name = sms.get('sender') or sms.get('service') or sms.get('cli') or 'Unknown'
-                            service_name = str(service_name).strip()
+                            service_name = str(sms.get('cli', 'Unknown')).strip()
                             masked_number = format_number(num)
                             
                             text = (
@@ -124,7 +114,7 @@ def start_lamix_forwarder():
                                 bot.send_message(CHAT_ID, text, parse_mode='HTML', reply_markup=markup)
                                 processed_sms_ids.add(msg_unique_id)
                                 save_processed_ids(processed_sms_ids)
-                                print(f"✅ Successfully Sent Telegram Message for: {masked_number}")
+                                print(f"✅ Forwarded Message for: {masked_number}")
                                 time.sleep(1)
                             except Exception as send_err:
                                 print(f"❌ Telegram Send Error: {send_err}")
